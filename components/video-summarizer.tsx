@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { X } from 'lucide-react'
+import { X, Download } from 'lucide-react'
 import MarkmapComponent from './markmap-component';
 
 interface TaskStatus {
@@ -22,6 +22,7 @@ export function VideoSummarizerComponent() {
   const [tasks, setTasks] = useState<Record<string, TaskStatus>>({})
   const [error, setError] = useState<string | null>(null)
   const [customStyle, setCustomStyle] = useState<string>('');
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -137,18 +138,73 @@ export function VideoSummarizerComponent() {
   }, [])
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const droppedFiles = Array.from(e.dataTransfer.files)
-    setFiles(prevFiles => [...prevFiles, ...droppedFiles])
-  }, [])
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 添加调试日志
+    console.log('文件拖入:', e.dataTransfer.files);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    console.log('处理的文件:', droppedFiles.map(f => ({
+      name: f.name,
+      type: f.type,
+      size: f.size
+    })));
+    
+    // 检查文件类型
+    const validFiles = droppedFiles.filter(file => {
+      const isAudio = file.type.startsWith('audio/');
+      const isVideo = file.type.startsWith('video/');
+      const isValid = isAudio || isVideo;
+      
+      if (!isValid) {
+        console.log(`不支持的文件类型: ${file.name} (${file.type})`);
+      }
+      return isValid;
+    });
+
+    if (validFiles.length === 0) {
+      console.log('没有有效的音视频文件');
+      return;
+    }
+
+    console.log('添加有效文件:', validFiles.map(f => f.name));
+    setFiles(prevFiles => [...prevFiles, ...validFiles]);
+  }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files)
-      setFiles(prevFiles => [...prevFiles, ...selectedFiles])
+      // 添加调试日志
+      console.log('选择的文件:', e.target.files);
+      
+      const selectedFiles = Array.from(e.target.files);
+      console.log('处理的文件:', selectedFiles.map(f => ({
+        name: f.name,
+        type: f.type,
+        size: f.size
+      })));
+      
+      // 检查文件类型
+      const validFiles = selectedFiles.filter(file => {
+        const isAudio = file.type.startsWith('audio/');
+        const isVideo = file.type.startsWith('video/');
+        const isValid = isAudio || isVideo;
+        
+        if (!isValid) {
+          console.log(`不支持的文件类型: ${file.name} (${file.type})`);
+        }
+        return isValid;
+      });
+
+      if (validFiles.length === 0) {
+        console.log('没有有效的音视频文件');
+        return;
+      }
+
+      console.log('添加有效文件:', validFiles.map(f => f.name));
+      setFiles(prevFiles => [...prevFiles, ...validFiles]);
     }
-  }
+  };
 
   const removeFile = (index: number) => {
     setFiles(prevFiles => prevFiles.filter((_, i) => i !== index))
@@ -160,6 +216,49 @@ export function VideoSummarizerComponent() {
            url.includes('bilibili.com') || 
            url.includes('b23.tv');  // B站短链接
   }
+
+  // 添加导出文章功能
+  const exportArticle = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // 添加保存功能
+  const handleSave = async (taskId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taskId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('保存失败');
+      }
+
+      const data = await response.json();
+      // 可以显示一个成功提示
+      console.log('保存成功:', data.path);
+    } catch (err) {
+      console.error('保存失败:', err);
+    }
+  };
+
+  const toggleExpand = (taskId: string) => {
+    setExpandedTasks(prev => ({
+      ...prev,
+      [taskId]: !prev[taskId]
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-500 via-blue-500 to-purple-500">
@@ -270,28 +369,65 @@ export function VideoSummarizerComponent() {
           <div className="space-y-4">
             {Object.entries(tasks).map(([taskId, task]) => (
               <div key={taskId} className="bg-white bg-opacity-10 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
+                <div 
+                  className="flex justify-between items-center cursor-pointer"
+                  onClick={() => toggleExpand(taskId)}
+                >
                   <span className="text-white">{task.url}</span>
-                  <span className={`px-2 py-1 rounded ${
-                    task.status === '完成' ? 'bg-green-500' : 
-                    task.status === '失败' ? 'bg-red-500' : 'bg-yellow-500'
-                  } text-white`}>
-                    {task.status}
-                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();  // 防止触发折叠
+                        handleSave(taskId);
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white hover:bg-white hover:bg-opacity-10"
+                    >
+                      保存结果
+                    </Button>
+                    <span className={`px-2 py-1 rounded ${
+                      task.status === '完成' ? 'bg-green-500' : 
+                      task.status === '失败' ? 'bg-red-500' : 'bg-yellow-500'
+                    } text-white`}>
+                      {task.status}
+                    </span>
+                  </div>
                 </div>
-                {task.result && (
-                  <div className="mt-4">
-                    <h3 className="text-white font-semibold">总结结果：</h3>
-                    <div className="text-white mt-2 whitespace-pre-wrap">
-                      {task.result}
-                    </div>
-                  </div>
-                )}
-                {task.mindmap && (
-                  <div className="mt-4">
-                    <h3 className="text-white font-semibold">思维导图：</h3>
-                    <MarkmapComponent markdown={task.mindmap} taskId={taskId} />
-                  </div>
+
+                {expandedTasks[taskId] && (
+                  <>
+                    {task.result && (
+                      <div className="mt-6 p-6 bg-black bg-opacity-20 rounded-lg backdrop-blur-sm">
+                        <div className="flex justify-between items-center border-b border-white border-opacity-20 pb-4 mb-4">
+                          <h3 className="text-white font-semibold text-xl">总结结果</h3>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportArticle(task.result!, `summary_${taskId}.txt`);
+                            }}
+                            variant="ghost"
+                            size="sm"
+                            className="text-white hover:bg-white hover:bg-opacity-10"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            导出文章
+                          </Button>
+                        </div>
+                        <div className="text-white mt-2 whitespace-pre-wrap leading-relaxed">
+                          {task.result}
+                        </div>
+                      </div>
+                    )}
+                    {task.mindmap && (
+                      <div className="mt-6 p-6 bg-black bg-opacity-20 rounded-lg backdrop-blur-sm">
+                        <div className="border-b border-white border-opacity-20 pb-4 mb-4">
+                          <h3 className="text-white font-semibold text-xl">思维导图</h3>
+                        </div>
+                        <MarkmapComponent markdown={task.mindmap} taskId={taskId} />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}
