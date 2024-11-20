@@ -74,35 +74,41 @@ const MarkmapComponent: React.FC<MarkmapProps> = ({ markdown, taskId, theme = 'l
           pathElements[i].style.stroke = '#ffffff80';
         }
 
-        // 添加滚轮缩放
+        // 修改滚轮缩放的处理函数
         const handleWheel = (e: WheelEvent) => {
           e.preventDefault();
           if (!mmRef.current) return;
 
-          // 计算缩放因子
-          const delta = -Math.sign(e.deltaY);
-          const scaleStep = 0.1;
+          // 使用更小的缩放步进值，让缩放更平滑
+          const scaleStep = 0.05;  // 从 0.1 改为 0.05
+          
+          // 使用 deltaY 的实际值来计算缩放因子，而不是简单的正负号
+          const delta = -e.deltaY / Math.abs(e.deltaY);
           const scaleFactor = 1 + (delta * scaleStep);
           
           // 更新缩放比例
           scaleRef.current *= scaleFactor;
           
-          // 限制缩放范围
-          scaleRef.current = Math.min(Math.max(scaleRef.current, 0.1), 5);
+          // 限制缩放范围，使用更精细的范围
+          scaleRef.current = Math.min(Math.max(scaleRef.current, 0.2), 3);
 
           // 获取鼠标相对于 SVG 的位置
           const rect = svg.getBoundingClientRect();
           const offsetX = (e.clientX - rect.left) / svg.clientWidth;
           const offsetY = (e.clientY - rect.top) / svg.clientHeight;
 
-          // 应用缩放，保持鼠标位置不变
-          mmRef.current.rescale(scaleRef.current);
-          
-          // 如果缩放比例太小，自动适应视图
-          if (scaleRef.current <= 0.2) {
-            mmRef.current.fit();
-            scaleRef.current = mmRef.current.state.scale;
-          }
+          // 使用 requestAnimationFrame 来平滑缩放动画
+          requestAnimationFrame(() => {
+            mmRef.current.rescale(scaleRef.current);
+            
+            // 如果缩放比例太小，平滑过渡到自适应视图
+            if (scaleRef.current <= 0.3) {
+              requestAnimationFrame(() => {
+                mmRef.current.fit();
+                scaleRef.current = mmRef.current.state.scale;
+              });
+            }
+          });
         };
 
         // 添加拖动功能

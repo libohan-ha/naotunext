@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { X, Download } from 'lucide-react'
 import MarkmapComponent from './markmap-component';
+import { AskBox } from "./ask-box"
 
 interface TaskStatus {
   status: string;
@@ -23,6 +24,7 @@ export function VideoSummarizerComponent() {
   const [error, setError] = useState<string | null>(null)
   const [customStyle, setCustomStyle] = useState<string>('');
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -258,6 +260,7 @@ export function VideoSummarizerComponent() {
       ...prev,
       [taskId]: !prev[taskId]
     }));
+    setCurrentTaskId(taskId);
   };
 
   return (
@@ -428,6 +431,10 @@ export function VideoSummarizerComponent() {
                       </div>
                     )}
                   </>
+                )}
+
+                {expandedTasks[taskId] && task.status === "完成" && (
+                  <AskBox taskId={taskId} />
                 )}
               </div>
             ))}
