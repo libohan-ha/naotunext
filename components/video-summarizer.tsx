@@ -24,7 +24,6 @@ export function VideoSummarizerComponent() {
   const [error, setError] = useState<string | null>(null)
   const [customStyle, setCustomStyle] = useState<string>('');
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -212,13 +211,6 @@ export function VideoSummarizerComponent() {
     setFiles(prevFiles => prevFiles.filter((_, i) => i !== index))
   }
 
-  const validateUrl = (url: string) => {
-    return url.includes('youtube.com') || 
-           url.includes('youtu.be') || 
-           url.includes('bilibili.com') || 
-           url.includes('b23.tv');  // B站短链接
-  }
-
   // 添加导出文章功能
   const exportArticle = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -260,7 +252,6 @@ export function VideoSummarizerComponent() {
       ...prev,
       [taskId]: !prev[taskId]
     }));
-    setCurrentTaskId(taskId);
   };
 
   return (

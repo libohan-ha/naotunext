@@ -74,7 +74,7 @@ const MarkmapComponent: React.FC<MarkmapProps> = ({ markdown, taskId }) => {
           if (mm) {
             mm.fit();
             mm.rescale(scaleRef.current);
-            mm.setData(root);
+            mm.setData(root as any);
           }
         });
 
