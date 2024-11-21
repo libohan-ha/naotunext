@@ -49,9 +49,8 @@ export function VideoSummarizerComponent() {
     try {
       const validUrls = videoUrls.filter(url => url.trim() !== '')
       
-      // 处理 YouTube 链接
       if (validUrls.length > 0) {
-        const response = await fetch(`${API_URL}/api/process`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/process`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -327,7 +326,7 @@ export function VideoSummarizerComponent() {
                   <label htmlFor="file-input" className="cursor-pointer">
                     <div className="space-y-4">
                       <div className="text-4xl group-hover:scale-110 transition-transform duration-300">📁</div>
-                      <div className="text-lg font-medium text-white">拖放文件到这里或点击上传</div>
+                      <div className="text-lg font-medium text-white">拖放文件到这里���点击上传</div>
                       <div className="text-sm text-gray-300">支持音频和视频文件</div>
                     </div>
                   </label>
